@@ -1,0 +1,6 @@
+{
+  "name": "taskbridge",
+  "description": "Secure middleware platform connecting care providers with vetted handyman and home safety support services to make homes safer for vulnerable residents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
