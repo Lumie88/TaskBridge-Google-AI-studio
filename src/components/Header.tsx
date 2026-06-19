@@ -36,40 +36,36 @@ export default function Header({ onOpenDemo, currentPath, hideNavigation }: Head
           </div>
         </a>
 
-        {/* Desktop Navigation with active states indicator */}
+        {/* Desktop CTA and Navigation links right next to it */}
         {!hideNavigation && (
-          <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => {
-              const isActive = currentPath === link.path;
-              const isPortal = link.path === "portal";
-              return (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  className={`font-sans text-sm font-medium transition-colors relative py-1.5 ${
-                    isActive 
-                      ? "text-rose-600 font-bold" 
-                      : isPortal
-                        ? "text-indigo-600 font-semibold hover:text-indigo-700 bg-indigo-50/80 px-2.5 py-1 rounded-lg border border-indigo-100 hover:scale-[1.02] shadow-sm active:scale-95 transition-all"
-                        : "text-slate-600 hover:text-rose-500"
-                  }`}
-                >
-                  <span>{link.name}</span>
-                  {isActive && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rose-500 to-amber-500 rounded-full" />
-                  )}
-                </a>
-              );
-            })}
-          </nav>
-        )}
-
-        {/* Desktop CTA */}
-        {!hideNavigation && (
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-6">
+            <nav className="flex items-center gap-6 border-r border-slate-150 pr-6">
+              {navLinks.map((link) => {
+                const isActive = currentPath === link.path;
+                const isPortal = link.path === "portal";
+                return (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    className={`font-sans text-sm font-medium transition-all relative py-1.5 ${
+                      isActive 
+                        ? "text-rose-600 font-bold" 
+                        : isPortal
+                          ? "text-indigo-600 font-bold hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/60 px-3.5 py-2 rounded-xl border border-indigo-100 shadow-sm active:scale-95 transition-all"
+                          : "text-slate-600 hover:text-rose-500 hover:scale-[1.02] transition-transform"
+                    }`}
+                  >
+                    <span>{link.name}</span>
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rose-500 to-amber-500 rounded-full" />
+                    )}
+                  </a>
+                );
+              })}
+            </nav>
             <button
               onClick={onOpenDemo}
-              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900 px-5 py-2.5 text-center font-sans text-sm font-semibold text-white transition-all shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900 px-5 py-2.5 text-center font-sans text-sm font-semibold text-white transition-all shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 hover:scale-[1.02]"
             >
               <span>Book a Demo</span>
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />

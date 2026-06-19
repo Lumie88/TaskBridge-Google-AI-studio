@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight, Play, ShieldAlert, BadgeCheck, ShieldCheck } from "lucide-react";
+import { ArrowRight, Play, ShieldAlert, BadgeCheck, ShieldCheck, LogIn } from "lucide-react";
 
 interface HeroProps {
   onOpenDemo: () => void;
@@ -60,21 +60,29 @@ export default function Hero({ onOpenDemo, heroImageUrl }: HeroProps) {
             </div>
 
             {/* Interactive CTAs */}
-            <div className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <div className="mt-10 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-4">
               <button
                 onClick={onOpenDemo}
-                className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-slate-900 px-7 py-4 font-sans text-base font-semibold text-white transition-all shadow-md hover:bg-slate-800 shadow-slate-900/10 hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-slate-900 px-6 py-3.5 font-sans text-sm font-semibold text-white transition-all shadow-md hover:bg-slate-800 shadow-slate-900/10 hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
               >
                 <span>Book a Demo</span>
-                <ArrowRight className="h-5 w-5" />
+                <ArrowRight className="h-4 w-4" />
               </button>
 
               <a
                 href="#how-it-works"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-7 py-4 font-sans text-base font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-6 py-3.5 font-sans text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
               >
-                <Play className="h-4 w-4 fill-slate-500 text-slate-500 mr-1" />
+                <Play className="h-3.5 w-3.5 fill-slate-500 text-slate-500 mr-1" />
                 <span>See How It Works</span>
+              </a>
+
+              <a
+                href="#portal"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 px-6 py-3.5 font-sans text-sm font-bold transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:-translate-y-0.5"
+              >
+                <LogIn className="h-4 w-4" />
+                <span>Sign In to Portal</span>
               </a>
             </div>
           </div>

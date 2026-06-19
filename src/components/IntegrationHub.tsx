@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowDown, ArrowRight, ShieldCheck, Database, Link, Sliders } from "lucide-react";
+import { ArrowDown, ArrowRight, ShieldCheck, Database, Link, Sliders, Lock } from "lucide-react";
 
 export default function IntegrationHub() {
   return (
@@ -108,9 +108,22 @@ export default function IntegrationHub() {
                   <p className="font-sans text-xs text-slate-500 mt-0.5">Any data processed meets stringent healthtech privacy parameters, shielding key location coordinates, codes, and vulnerabilities.</p>
                 </div>
               </div>
+
+              <div className="flex items-start gap-3">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-650 mt-1">
+                  <Lock className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <h4 className="font-display font-semibold text-xs text-slate-800">Automated Amiqus Ident-Vetting</h4>
+                  <p className="font-sans text-xs text-slate-500 mt-0.5">Automate background vetting workflows instantly. Direct APIs push Enhanced DBS checks and photo verification inquiries status via secure, fully-compliant Amiqus APIs.</p>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-8 flex gap-4">
+            <div className="mt-8 flex flex-wrap gap-2.5">
+              <span className="font-mono text-[9px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-150 rounded px-2.5 py-1 uppercase">
+                Amiqus Partner Protocol Certified
+              </span>
               <span className="font-mono text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 border border-slate-200 rounded px-2 py-1">
                 API COMPLIANT
               </span>

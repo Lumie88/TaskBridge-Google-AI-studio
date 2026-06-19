@@ -17,6 +17,7 @@ import SandboxModal from "./components/SandboxModal";
 import Footer from "./components/Footer";
 import CoordinatorPortal from "./components/CoordinatorPortal";
 import AdminPortalWrapper from "./components/AdminPortal/AdminPortalWrapper";
+import heroImageUrl from "./assets/images/home_safety_hero_1781696221818.jpg";
 import { 
   ShieldCheck, 
   HelpCircle, 
@@ -57,8 +58,6 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("password123");
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
-
-  const heroImageUrl = "/src/assets/images/home_safety_hero_1781696221818.jpg";
 
   // Automated workspace display optimization states - Default to true to automatically maximize body width & collapse top headers
   const [isFullWidth, setIsFullWidth] = useState(true);

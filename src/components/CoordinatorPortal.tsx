@@ -29,7 +29,9 @@ import {
   X,
   FileText,
   Lock,
-  Loader2
+  Loader2,
+  Trash2,
+  Key
 } from "lucide-react";
 
 // Types
@@ -55,6 +57,9 @@ export interface Task {
     dbsVerifiedStatus: string;
   };
   completionNotes?: string;
+  fullAddress?: string;
+  postcode?: string;
+  keysafeCode?: string;
   timeline: { status: string; timestamp: string; note: string }[];
 }
 
@@ -89,6 +94,9 @@ const INITIAL_TASKS: Task[] = [
       dbsVerifiedStatus: "Enhanced DBS Checked & Active"
     },
     completionNotes: "All brambles cut back, high-pressure washed the concrete tiles to clear green algae, leaving a completely slip-free entry pathway.",
+    fullAddress: "104 Orchard Lane, Manchester",
+    postcode: "M14 5TQ",
+    keysafeCode: "K8955",
     timeline: [
       { status: "Awaiting Care Approval", timestamp: "2026-06-16 09:12", note: "Care note translated by AI summary engine." },
       { status: "Pending TaskBridge Assignment", timestamp: "2026-06-16 10:00", note: "Approved by Care Coordinator Sarah Jenkins." },
@@ -115,6 +123,9 @@ const INITIAL_TASKS: Task[] = [
       scheduledWindow: "Today at 1:30 PM",
       dbsVerifiedStatus: "Enhanced DBS Checked & Active"
     },
+    fullAddress: "44 Beechwood Drive, Leeds",
+    postcode: "LS2 8PJ",
+    keysafeCode: "C4412",
     timeline: [
       { status: "Awaiting Care Approval", timestamp: "2026-06-16 14:00", note: "AI extraction completed." },
       { status: "Pending TaskBridge Assignment", timestamp: "2026-06-16 14:30", note: "Approved for dispatcher matching queue." },
@@ -133,6 +144,9 @@ const INITIAL_TASKS: Task[] = [
     preferredWindow: "Flexible Day",
     carerPresent: false,
     status: "Pending TaskBridge Assignment",
+    fullAddress: "12 Primrose Close, Birmingham",
+    postcode: "B15 2QX",
+    keysafeCode: "A7789",
     timeline: [
       { status: "Awaiting Care Approval", timestamp: "2020-06-15 11:00", note: "AI audit completed." },
       { status: "Pending TaskBridge Assignment", timestamp: "2026-06-15 14:00", note: "Manual request raised by regional coordinator." }
@@ -159,6 +173,9 @@ const INITIAL_TASKS: Task[] = [
       dbsVerifiedStatus: "Enhanced DBS Checked & Active"
     },
     completionNotes: "All sodden fire hazards completely cleared from wheelchair egress points. Tested ramp with empty wheelchair to verify zero obstructions occur.",
+    fullAddress: "89 High Street, London",
+    postcode: "EC1A 1BB",
+    keysafeCode: "X1034",
     timeline: [
       { status: "Pending TaskBridge Assignment", timestamp: "2026-06-15 08:00", note: "Approved" },
       { status: "Assigned", timestamp: "2026-06-15 08:30", note: "Matched and assigned in background." },
@@ -205,7 +222,10 @@ export default function CoordinatorPortal({
     urgency: "Medium" as "Routine" | "Medium" | "Urgent",
     visitWindow: "Morning (09:00 - 12:00)",
     carerPresent: false,
-    mockPhotoUrl: ""
+    mockPhotoUrl: "",
+    fullAddress: "",
+    postcode: "",
+    keysafeCode: ""
   });
 
   // AI Review Suggestions States
@@ -326,7 +346,10 @@ export default function CoordinatorPortal({
           safeguardingApplies: safeguardingRating,
           preferredWindow: formState.visitWindow,
           carerPresent: formState.carerPresent,
-          photoUrl: formState.mockPhotoUrl || undefined
+          photoUrl: formState.mockPhotoUrl || undefined,
+          fullAddress: formState.fullAddress || "",
+          postcode: formState.postcode || "",
+          keysafeCode: formState.keysafeCode || ""
         });
       });
 
@@ -359,6 +382,9 @@ export default function CoordinatorPortal({
         safeguardingApplies: sug.safeguardingApplies,
         preferredWindow: sug.preferredWindow,
         carerPresent: sug.carerPresent,
+        fullAddress: sug.fullAddress || formState.fullAddress,
+        postcode: sug.postcode || formState.postcode,
+        keysafeCode: sug.keysafeCode || formState.keysafeCode,
         status: "Pending TaskBridge Assignment",
         timeline: [
           { status: "Awaiting Care Approval", timestamp: dateString, note: "Original Care report submitted." },
@@ -388,7 +414,10 @@ export default function CoordinatorPortal({
       urgency: "Medium",
       visitWindow: "Morning (09:00 - 12:00)",
       carerPresent: false,
-      mockPhotoUrl: ""
+      mockPhotoUrl: "",
+      fullAddress: "",
+      postcode: "",
+      keysafeCode: ""
     });
     setAiSuggestions(null);
     setActiveTab("status");
@@ -911,7 +940,10 @@ export default function CoordinatorPortal({
                             residentName: idx === 0 ? "Margaret Knowles" : "Ronald Sutherland",
                             careNote: tmpl.text,
                             urgency: idx === 0 ? "Medium" : "Urgent",
-                            carerPresent: true
+                            carerPresent: true,
+                            fullAddress: idx === 0 ? "104 Orchard Lane, Manchester" : "44 Beechwood Drive, Leeds",
+                            postcode: idx === 0 ? "M14 5TQ" : "LS2 8PJ",
+                            keysafeCode: idx === 0 ? "K8955" : "C4412"
                           })}
                           className="p-3 rounded-xl border border-slate-200 hover:border-rose-400 bg-slate-50/50 hover:bg-rose-50/10 text-left transition-all text-[11px] font-sans space-y-1 block cursor-pointer group"
                         >
@@ -982,6 +1014,60 @@ export default function CoordinatorPortal({
                           <option>Afternoon (12:00 - 16:00)</option>
                           <option>Flexible Day</option>
                         </select>
+                      </div>
+                    </div>
+
+                    {/* Access & Location Details */}
+                    <div className="bg-slate-100/50 border border-slate-200 rounded-2xl p-4.5 space-y-4 text-xs font-sans text-left">
+                      <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <MapPin className="h-4 w-4 text-rose-500" />
+                        <span>Resident Address & Easy Accessibility</span>
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2 space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Full Address</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="E.g. 104 Orchard Lane, Manchester"
+                            value={formState.fullAddress}
+                            onChange={(e) => setFormState({ ...formState, fullAddress: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                          />
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Postcode</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="E.g. M14 5TQ"
+                            value={formState.postcode}
+                            onChange={(e) => setFormState({ ...formState, postcode: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500 uppercase font-semibold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <span>Secure Keysafe Code</span>
+                            <span className="text-[8px] bg-indigo-650 text-white px-1.5 py-0.5 rounded font-mono font-extrabold uppercase shrink-0">DBS Encrypted Gate</span>
+                          </label>
+                          <span className="text-[9px] text-slate-400">Optional</span>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="E.g. C1234X"
+                          value={formState.keysafeCode}
+                          onChange={(e) => setFormState({ ...formState, keysafeCode: e.target.value })}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono text-sm tracking-wide font-bold"
+                        />
+                        <p className="text-[9px] text-slate-500 leading-normal">
+                          *Keysafe Safety Protocols: The resident's keysafe code is held within a **tamper-proof operational ledger** and is **ONLY released** onto the handyman's screen if they hold certified **Enhanced DBS clearance** and have completed active GPS-verification at the door.
+                        </p>
                       </div>
                     </div>
 
@@ -1127,7 +1213,7 @@ export default function CoordinatorPortal({
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                          <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
                             {/* Urgent status toggle */}
                             <select
                               value={sug.urgency}
@@ -1136,7 +1222,7 @@ export default function CoordinatorPortal({
                                 updated[index].urgency = e.target.value;
                                 setAiSuggestions(updated);
                               }}
-                              className="rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold focus:outline-none text-slate-700"
+                              className="rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold focus:outline-none text-slate-700 cursor-pointer"
                             >
                               <option value="Routine">Routine Urgency</option>
                               <option value="Medium">Medium Urgency</option>
@@ -1151,7 +1237,7 @@ export default function CoordinatorPortal({
                                 updated[index].safeguardingApplies = !sug.safeguardingApplies;
                                 setAiSuggestions(updated);
                               }}
-                              className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${
+                              className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
                                 sug.safeguardingApplies 
                                   ? "bg-rose-50 text-rose-700 border-rose-205"
                                   : "bg-slate-50 text-slate-500 border-slate-200"
@@ -1159,12 +1245,26 @@ export default function CoordinatorPortal({
                             >
                               {sug.safeguardingApplies ? "● Vetting Trigger active" : "○ Vetting bypassed"}
                             </button>
+
+                            {/* Remove/Delete Suggested Task action */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = aiSuggestions.filter((_, i) => i !== index);
+                                setAiSuggestions(updated.length > 0 ? updated : null);
+                                showToast("Task suggestion discarded successfully.");
+                              }}
+                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50/50 rounded-xl border border-slate-200 hover:border-rose-250 transition-colors cursor-pointer"
+                              title="Discard this parsed safety action"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
 
                         {/* Summary Editable Note */}
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">AI Suggested Dispatch Summary</label>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">AI Suggested Dispatch Summary</span>
                           <input
                             type="text"
                             required
@@ -1174,15 +1274,70 @@ export default function CoordinatorPortal({
                               updated[index].summary = e.target.value;
                               setAiSuggestions(updated);
                             }}
-                            className="w-full rounded-xl border border-slate-200 bg-slate-55 px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500 italic font-medium"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500 italic font-medium"
+                          />
+                        </div>
+
+                        {/* Editable Location Settings per suggest card */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-100 pt-3 text-xs font-sans">
+                          <div className="sm:col-span-2 space-y-1">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Full Address</span>
+                            <input
+                              type="text"
+                              value={sug.fullAddress || ""}
+                              onChange={(e) => {
+                                const updated = [...aiSuggestions];
+                                updated[index].fullAddress = e.target.value;
+                                setAiSuggestions(updated);
+                              }}
+                              placeholder="E.g. 104 Orchard Lane, Manchester"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Postcode</span>
+                            <input
+                              type="text"
+                              value={sug.postcode || ""}
+                              onChange={(e) => {
+                                const updated = [...aiSuggestions];
+                                updated[index].postcode = e.target.value;
+                                setAiSuggestions(updated);
+                              }}
+                              placeholder="E.g. M14 5TQ"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 font-semibold uppercase"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Editable Secure keysafe code per suggest card */}
+                        <div className="space-y-1 pt-1 font-sans text-xs">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Keysafe Access Code</span>
+                            {sug.keysafeCode && (
+                              <span className="text-[8px] text-indigo-750 bg-indigo-50 border border-indigo-150 rounded px-1.5 font-bold font-mono">DBS Vetted Handyman Release Safe</span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            value={sug.keysafeCode || ""}
+                            onChange={(e) => {
+                              const updated = [...aiSuggestions];
+                              updated[index].keysafeCode = e.target.value;
+                              setAiSuggestions(updated);
+                            }}
+                            placeholder="Optional keysafe code (e.g. C1234X)"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono font-bold tracking-wider"
                           />
                         </div>
 
                         {/* Safeguarding Vetting Notification Banner */}
                         {sug.safeguardingApplies && (
-                          <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-2 flex items-center gap-1.5 text-[10px] text-indigo-750 font-sans">
-                            <Lock className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                            <span>Vettable Trigger: Task involves vulnerable resident interaction. Required **Enhanced DBS vetted handyman**.</span>
+                          <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-2.5 flex items-start gap-1.5 text-[10px] text-indigo-750 font-sans leading-relaxed">
+                            <Lock className="h-3.5 w-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                            <div>
+                              <span><strong>Safeguarding Trigger:</strong> Task involves direct vulnerable resident attendance. Security keysafe code: <strong>{sug.keysafeCode || "[Not Provided]"}</strong> will only be released once <strong>Enhanced DBS checked handymen</strong> arrive-checked on site.</span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1532,6 +1687,41 @@ export default function CoordinatorPortal({
                   <p className="text-slate-800 font-bold text-xs">
                     {selectedDetailedTask.summary}
                   </p>
+                </div>
+
+                {/* 3.5 Location and secure keysafe details */}
+                <div className="bg-slate-50 border border-slate-205 rounded-xl p-4 space-y-2.5 text-xs text-left">
+                  <h4 className="font-bold text-slate-800 text-[10px] uppercase tracking-wide border-b border-slate-200 pb-1.5 flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-rose-500" />
+                    <span>Location & Secure Access Credentials</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-sans">
+                    <div>
+                      <span className="text-slate-450 block text-[9px] uppercase font-bold">Resident Address & Postcode</span>
+                      <strong className="text-slate-800 text-[11px] leading-relaxed block mt-0.5">
+                        {selectedDetailedTask.fullAddress || "No address logged"}
+                        {selectedDetailedTask.postcode ? `, ${selectedDetailedTask.postcode}` : ""}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-450 block text-[9px] uppercase font-bold flex items-center gap-1">
+                        <Key className="h-3 w-3 text-indigo-500" />
+                        <span>Keysafe Code</span>
+                      </span>
+                      {selectedDetailedTask.safeguardingApplies ? (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[11px] font-mono font-extrabold text-indigo-750 bg-indigo-50/80 border border-indigo-200 px-2 py-0.5 rounded shadow-sm">
+                            {selectedDetailedTask.keysafeCode || "None Logged"}
+                          </span>
+                          <span className="text-[8px] bg-indigo-650 text-white font-extrabold px-1.5 py-0.5 rounded uppercase font-mono tracking-wide shrink-0">DBS Release Approved</span>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] font-mono font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded inline-block mt-1">
+                          {selectedDetailedTask.keysafeCode || "None Logged"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* 4. Safeguarding trigger status bar */}

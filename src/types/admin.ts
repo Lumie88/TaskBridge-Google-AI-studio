@@ -69,6 +69,9 @@ export interface ServiceTask {
   checkInCoords?: { lat: number; lng: number };
   checkOutTime?: string;
   completionNotes?: string;
+  fullAddress?: string;
+  postcode?: string;
+  keysafeCode?: string;
 }
 
 export interface HandymanTrader {

@@ -210,11 +210,18 @@ export default function FieldVisitSim({ onShowNotification, onRefresh, tasks }: 
             {/* Step 1: Clock In */}
             {activeTask.status === "Visit Scheduled" && (
               <div className="space-y-3 font-sans">
-                <div className="bg-indigo-505 bg-indigo-500/5 border border-indigo-500/10 p-3.5 rounded-xl text-xs space-y-2 leading-relaxed text-slate-300">
+                <div className="bg-indigo-505 bg-indigo-500/5 border border-indigo-500/10 p-3.5 rounded-xl text-xs space-y-2 leading-relaxed text-slate-350">
                   <p className="font-bold text-slate-200">Mandatory GPS Clock-In Protocol</p>
                   <p className="text-[11px] text-slate-400">
                     To satisfy Safeguarding protocols, georeferenced coordinates are validated within 100 meters of clinical site address before opening task descriptions.
                   </p>
+                </div>
+
+                {/* Site Target Address preview */}
+                <div className="bg-slate-950 p-3.5 border border-slate-850 rounded-xl leading-relaxed text-xs text-slate-300">
+                  <span className="text-slate-500 text-[9px] uppercase font-mono block">Target Service Address</span>
+                  <p className="font-bold text-white">{activeTask.fullAddress || "Address details stored in ledger."}</p>
+                  <p className="text-slate-400 font-semibold">{activeTask.postcode || "M14 5TQ"}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono select-none">
@@ -262,6 +269,26 @@ export default function FieldVisitSim({ onShowNotification, onRefresh, tasks }: 
                     <p className="text-[10px] text-emerald-500">{activeTask.checkInTime ? `Clocked: ${activeTask.checkInTime.replace("T", " ").substring(0, 16)}` : ""}</p>
                   </div>
                 </div>
+
+                {/* Target Address details */}
+                <div className="bg-slate-950 p-3.5 border border-slate-850 rounded-xl leading-relaxed text-xs text-slate-300">
+                  <span className="text-slate-500 text-[9px] uppercase font-mono block">Target Service Address</span>
+                  <p className="font-bold text-white">{activeTask.fullAddress || "Manchester Address Block"}</p>
+                  <p className="text-slate-400 font-semibold">{activeTask.postcode || "M14 5TQ"}</p>
+                </div>
+
+                {/* Secure Handover of Keysafe Code for Enhanced DBS Checked handymen */}
+                {activeTask.keysafeCode && (
+                  <div className="bg-indigo-950/80 border border-indigo-900/60 p-3.5 rounded-xl flex items-center justify-between text-xs space-y-0.5">
+                    <div>
+                      <span className="text-indigo-400 block text-[9px] uppercase font-mono font-bold">Secure Released Keysafe</span>
+                      <strong className="text-white text-sm font-mono tracking-wider">{activeTask.keysafeCode}</strong>
+                    </div>
+                    <span className="text-[8px] bg-indigo-650 text-indigo-100 font-extrabold px-1.5 py-0.5 rounded uppercase font-mono tracking-wide shrink-0">
+                      Vetted Release
+                    </span>
+                  </div>
+                )}
 
                 <div className="space-y-1 bg-slate-950 p-3 border border-slate-850 rounded-xl leading-relaxed">
                   <span className="text-slate-500 text-[9px] uppercase font-mono block">Work directive spec</span>
