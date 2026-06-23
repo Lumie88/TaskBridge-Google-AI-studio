@@ -18,6 +18,11 @@ export interface Agency {
   status: "Active" | "Suspended";
   createdAt: string;
   updatedAt: string;
+  coordinatorEmail?: string;
+  tempPassword?: string;
+  passwordChanged?: boolean;
+  activePassword?: string;
+  lastPasswordChangedAt?: string;
 }
 
 export interface ServiceTask {
@@ -111,7 +116,7 @@ export interface AuditLog {
 export interface WebhookLog {
   id: string;
   direction: "inbound" | "outbound";
-  service: "Care Management Software" | "Handyman Network" | "DBS Verification";
+  service: string;
   endpoint: string;
   payload: any;
   response: any;

@@ -350,6 +350,60 @@ const SEED_AUDIT_LOGS: AuditLog[] = [
   },
 ];
 
+interface Testimonial {
+  id: string;
+  quote: string;
+  author: string;
+  role: string;
+  orgType: string;
+  impactLabel: string;
+  impactValue: string;
+  createdAt: string;
+}
+
+const SEED_TESTIMONIALS: Testimonial[] = [
+  {
+    id: "testimonial-1",
+    quote: "Our frontline carers regularly noted safety hazards like rotting backyard steps or mossy ramps, but we had no safe process to act on them. With TaskBridge, the observation becomes an approved task in seconds, and an Enhanced DBS vetted handyman resolves it within 24 hours.",
+    author: "Eleanor Vance",
+    role: "Registered Care Manager",
+    orgType: "Domiciliary Care Agency",
+    impactLabel: "Safety Response Time",
+    impactValue: "Reduced by 80%",
+    createdAt: "2026-06-15T12:00:00Z"
+  },
+  {
+    id: "testimonial-2",
+    quote: "Protecting vulnerable adults is our ultimate duty. Before TaskBridge, giving domestic access details to independent tradespeople was a critical GDPR and safeguarding concern. The secure firewall shields the resident's phone number and home entry codes flawlessly.",
+    author: "Marcus Thorne",
+    role: "Head of Safeguarding & Quality",
+    orgType: "Regional Care Group",
+    impactLabel: "Safeguarding Rating",
+    impactValue: "100% Compliant Audits",
+    createdAt: "2026-06-16T12:00:00Z"
+  },
+  {
+    id: "testimonial-3",
+    quote: "The administrative efficiency gains are incredible. We used to waste hours calling local handyman lists, trying to check insurance and DBS records manually. TaskBridge has fully automated this dispatch workflow. It saves our coordinators 12 to 15 hours of phone-work every week.",
+    author: "Sian Davies",
+    role: "Operations Director",
+    orgType: "Multi-site Care Provider",
+    impactLabel: "Weekly Admin Saved",
+    impactValue: "15 Hours / Coordinator",
+    createdAt: "2026-06-17T12:00:00Z"
+  },
+  {
+    id: "testimonial-4",
+    quote: "When auditing our fall-prevention services, care commissioners need structured time-logged evidence. TaskBridge serves as our dynamic operations ledger, returning clear before-and-after photograph verification to our central office instantly.",
+    author: "Dr. Alistair Reed",
+    role: "Direct Access Commissioner",
+    orgType: "Local Authority Partner",
+    impactLabel: "Compliance Assurance",
+    impactValue: "Instant Exportable Logs",
+    createdAt: "2026-06-18T12:00:00Z"
+  }
+];
+
 const SEED_WEBHOOK_LOGS: WebhookLog[] = [
   {
     id: "WHL-001",
@@ -371,6 +425,7 @@ let db: {
   tasks: ServiceTask[];
   audit_logs: AuditLog[];
   webhook_logs: WebhookLog[];
+  testimonials: Testimonial[];
 } = {
   admins: SEED_ADMINS,
   agencies: SEED_AGENCIES,
@@ -378,6 +433,7 @@ let db: {
   tasks: SEED_TASKS,
   audit_logs: SEED_AUDIT_LOGS,
   webhook_logs: SEED_WEBHOOK_LOGS,
+  testimonials: SEED_TESTIMONIALS,
 };
 
 // Ensure database reads/writes are persisted so user additions are permanent
@@ -386,6 +442,10 @@ const loadDB = () => {
     if (fs.existsSync(DB_PATH)) {
       const src = fs.readFileSync(DB_PATH, "utf-8");
       db = JSON.parse(src);
+      if (!db.testimonials) {
+        db.testimonials = SEED_TESTIMONIALS;
+        saveDB();
+      }
     } else {
       saveDB();
     }
@@ -431,7 +491,7 @@ const logAudit = (
 
 const logWebhook = (
   direction: "inbound" | "outbound",
-  service: "Care Management Software" | "Handyman Network" | "DBS Verification",
+  service: string,
   endpoint: string,
   payload: any,
   response: any,
@@ -514,6 +574,131 @@ app.post("/api/admin/auth/signin", (req, res) => {
   res.json({
     user,
     token,
+  });
+});
+
+// Coordinator Portal Sign-In and Password-Change Gateway
+app.post("/api/coordinator/login", (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required." });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // Find matching agency
+  const agency = db.agencies.find(a => {
+    if (a.coordinatorEmail && a.coordinatorEmail.toLowerCase() === normalizedEmail) {
+      return true;
+    }
+    // Fallback search logic: match workspace domain
+    const emailDomain = normalizedEmail.split("@")[1];
+    return a.workEmailDomain && a.workEmailDomain.toLowerCase() === emailDomain;
+  });
+
+  if (!agency) {
+    return res.status(401).json({ error: "Access Rejected: clinical coordinator email domain is not registered. Please contact a TaskBridge administrator." });
+  }
+
+  // Suspended agency check
+  if (agency.status === "Suspended") {
+    return res.status(403).json({ error: "Access Rejected: Your agency workspace has been suspended. Contact administrator." });
+  }
+
+  // Password verification
+  // For seed agencies, default activePassword is password123, and they are treated as changed
+  const expectedPassword = agency.activePassword || "password123";
+  const hasChangedPassword = agency.passwordChanged !== false; // If not explicitly false, treat as changed (pre-onboarded seeds)
+
+  if (password !== expectedPassword) {
+    return res.status(401).json({ error: "Access Rejected: security credentials password mismatch." });
+  }
+
+  // Match succeeded! Now check if temporary password must be changed at first login
+  if (!hasChangedPassword) {
+    return res.json({
+      requiresPasswordChange: true,
+      agencyId: agency.agencyId,
+      email: agency.coordinatorEmail || normalizedEmail,
+      isExpiredPrompt: false,
+      message: "First-time security check: You are logging in using an autogenerated temporary password. Please configure a new security password to establish secure session tracking."
+    });
+  }
+
+  // Check if password must be changed because of 3-month (90 days) rotation expiration
+  const lastChangedStr = agency.lastPasswordChangedAt || agency.createdAt || new Date().toISOString();
+  const lastChangedDate = new Date(lastChangedStr);
+  const ninetyDaysInMs = 90 * 24 * 60 * 60 * 1000;
+  const isExpired = (Date.now() - lastChangedDate.getTime()) > ninetyDaysInMs;
+
+  if (isExpired) {
+    return res.json({
+      requiresPasswordChange: true,
+      agencyId: agency.agencyId,
+      email: agency.coordinatorEmail || normalizedEmail,
+      isExpiredPrompt: true,
+      message: "Security Policy Check: Your coordinator password has exceeded the mandatory 3-month (90 days) security rotation threshold. Please configure a new clinical credentials password of at least 5 characters."
+    });
+  }
+
+  // Successful direct login
+  const token = `tb_session_jwt_coord_${agency.agencyId}.${Math.random().toString(16).substring(2, 6)}`;
+  logAudit(agency.agencyId, "Care Coordinator", "COORDINATOR_SIGNIN", "Agency", agency.agencyId, { 
+    email: normalizedEmail,
+    portalSession: true 
+  }, req.ip);
+
+  res.json({
+    success: true,
+    agency,
+    token
+  });
+});
+
+app.post("/api/coordinator/change-password", (req, res) => {
+  const { email, tempPassword, newPassword } = req.body;
+  if (!email || !tempPassword || !newPassword) {
+    return res.status(400).json({ error: "All verification and new password fields are required." });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const agency = db.agencies.find(a => 
+    (a.coordinatorEmail && a.coordinatorEmail.toLowerCase() === normalizedEmail) ||
+    (a.workEmailDomain && normalizedEmail.endsWith("@" + a.workEmailDomain))
+  );
+
+  if (!agency) {
+    return res.status(404).json({ error: "Active clinical workspace registration not found for this email." });
+  }
+
+  const expectedTempPassword = agency.activePassword || agency.tempPassword || "password123";
+  if (tempPassword !== expectedTempPassword) {
+    return res.status(401).json({ error: "Security Credentials Rejected: Current verification password mismatch." });
+  }
+
+  if (newPassword.length < 5) {
+    return res.status(400).json({ error: "Security guidelines: Your new credentials password must contain at least 5 characters." });
+  }
+
+  // Complete change password transaction
+  agency.activePassword = newPassword;
+  agency.passwordChanged = true;
+  agency.lastPasswordChangedAt = new Date().toISOString();
+  agency.updatedAt = new Date().toISOString();
+  saveDB();
+
+  logAudit(agency.agencyId, "Care Coordinator", "COORDINATOR_PASSWORD_RESET", "Agency", agency.agencyId, { 
+    email: normalizedEmail,
+    temporaryPasswordRetired: true
+  }, req.ip);
+
+  const token = `tb_session_jwt_coord_${agency.agencyId}.${Math.random().toString(16).substring(2, 6)}`;
+
+  res.json({
+    success: true,
+    agency,
+    token,
+    message: "Security credentials updated. Secure portal session established successfully."
   });
 });
 
@@ -877,23 +1062,39 @@ app.get("/api/admin/agencies", (req, res) => {
 });
 
 app.post("/api/admin/agencies", (req, res) => {
-  const { name, primaryContact, workEmailDomain, webhookUrl, status } = req.body;
+  const { name, primaryContact, workEmailDomain, webhookUrl, status, coordinatorEmail } = req.body;
+  
+  // Autogenerate a temporary password (must be changed at first login)
+  const tempPasswordNum = Math.floor(1000 + Math.random() * 9000);
+  const autogenTempPassword = `TB-TEMP-${tempPasswordNum}`;
+
+  const finalCoordinatorEmail = coordinatorEmail || `coordinator@${workEmailDomain || "carehub.org"}`;
+
   const newAgency: Agency = {
     agencyId: `AGC-${Math.floor(400 + Math.random() * 500)}`,
     name: name || "New Registered Care Group",
     primaryContact: primaryContact || "Clinical Lead",
     workEmailDomain: workEmailDomain || "carehub.org",
-    webhookUrl: webhookUrl || "https://carehub.org/callback",
+    webhookUrl: webhookUrl !== undefined ? webhookUrl : "https://carehub.org/callback",
     apiKey: `tb_live_agc_${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}`,
     status: status || "Active",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    coordinatorEmail: finalCoordinatorEmail,
+    tempPassword: autogenTempPassword,
+    passwordChanged: false,
+    activePassword: autogenTempPassword,
+    lastPasswordChangedAt: new Date().toISOString(),
   };
 
   db.agencies.push(newAgency);
   saveDB();
 
-  logAudit("ADM-999", "Super Admin", "AGENCY_CREATED", "Agency", newAgency.agencyId, { name: newAgency.name });
+  logAudit("ADM-999", "Super Admin", "AGENCY_CREATED", "Agency", newAgency.agencyId, { 
+    name: newAgency.name,
+    coordinatorEmail: finalCoordinatorEmail,
+    tempPasswordGenerated: autogenTempPassword
+  });
 
   res.status(201).json(newAgency);
 });
@@ -906,7 +1107,7 @@ app.patch("/api/admin/agencies/:agencyId", (req, res) => {
   const { name, primaryContact, webhookUrl, status } = req.body;
   if (name) agency.name = name;
   if (primaryContact) agency.primaryContact = primaryContact;
-  if (webhookUrl) agency.webhookUrl = webhookUrl;
+  if (webhookUrl !== undefined) agency.webhookUrl = webhookUrl;
   if (status) agency.status = status;
   agency.updatedAt = new Date().toISOString();
 
@@ -1007,7 +1208,7 @@ app.post("/api/visit/checkout", (req, res) => {
 
   // Outbound Sync callback simulation to Carey CMS Systems
   const agency = db.agencies.find((a) => a.agencyId === task.agencyId);
-  if (agency && agency.webhookUrl) {
+  if (agency && agency.webhookUrl && agency.webhookUrl.startsWith("http")) {
     logWebhook(
       "outbound",
       "Care Management Software",
@@ -1097,6 +1298,44 @@ app.post("/api/admin/tasks/send-visit-link", (req, res) => {
     status: "dispatched",
     providerSid: "SMdfa87e21a209fd14e8201a18da9810ad",
   });
+});
+
+// Dynamic Testimonials APIs (Outcomes from safeguarding leads & care leaders)
+app.get("/api/testimonials", (req, res) => {
+  res.json(db.testimonials || SEED_TESTIMONIALS);
+});
+
+app.post("/api/testimonials", (req, res) => {
+  const { quote, author, role, orgType, impactLabel, impactValue } = req.body;
+  if (!quote || !author || !role) {
+    return res.status(400).json({ error: "Missing required fields (quote, author, role)." });
+  }
+
+  const newTestimonial: Testimonial = {
+    id: `testimonial-${Math.floor(1000 + Math.random() * 9000)}`,
+    quote,
+    author,
+    role,
+    orgType: orgType || "Independent Care Provider",
+    impactLabel: impactLabel || "Measured Improvement",
+    impactValue: impactValue || "100% Compliant",
+    createdAt: new Date().toISOString()
+  };
+
+  if (!db.testimonials) {
+    db.testimonials = [...SEED_TESTIMONIALS];
+  }
+
+  db.testimonials.push(newTestimonial);
+  saveDB();
+
+  logAudit("SAFEGUARDING_LEAD", role, "TESTIMONIAL_SUBMITTED", "Testimonial", newTestimonial.id, {
+    author,
+    impactLabel: newTestimonial.impactLabel,
+    impactValue: newTestimonial.impactValue
+  });
+
+  res.status(201).json(newTestimonial);
 });
 
 // Vite Middleware for Serving compiled code

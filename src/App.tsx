@@ -59,6 +59,18 @@ export default function App() {
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
+  // Password-change-at-first-login tracking states
+  const [requiresPasswordChangeData, setRequiresPasswordChangeData] = useState<{
+    email: string;
+    tempPassword: string;
+    isExpiredPrompt?: boolean;
+    message?: string;
+  } | null>(null);
+  const [newPasswordVal, setNewPasswordVal] = useState("");
+  const [confirmPasswordVal, setConfirmPasswordVal] = useState("");
+  const [changeLoading, setChangeLoading] = useState(false);
+  const [changeError, setChangeError] = useState("");
+
   // Automated workspace display optimization states - Default to true to automatically maximize body width & collapse top headers
   const [isFullWidth, setIsFullWidth] = useState(true);
   const [hideTopHeaders, setHideTopHeaders] = useState(true);
@@ -80,28 +92,90 @@ export default function App() {
 
   // Sandbox request can be opened manually via buttons, no automatic timer on load
 
-  const handlePortalLogin = (e: React.FormEvent) => {
+  const handlePortalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
     setLoginLoading(true);
 
-    setTimeout(() => {
-      // Validate credentials check
-      if (!loginEmail.endsWith(".org") && !loginEmail.endsWith(".uk") && !loginEmail.endsWith(".com")) {
-        setLoginError("Please enter a valid care organization workspace email.");
+    try {
+      const response = await fetch("/api/coordinator/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLoginError(data.error || "Authentication failed. Please check your credentials.");
         setLoginLoading(false);
         return;
       }
 
-      if (loginPassword.length < 5) {
-        setLoginError("Security password/token must be at least 5 characters long.");
+      if (data.requiresPasswordChange) {
+        setRequiresPasswordChangeData({
+          email: data.email,
+          tempPassword: loginPassword,
+          isExpiredPrompt: data.isExpiredPrompt,
+          message: data.message
+        });
         setLoginLoading(false);
+      } else {
+        setIsAuthenticated(true);
+        setLoginLoading(false);
+      }
+    } catch (err: any) {
+      setLoginError("Failed to communicate with authorization broker gateway.");
+      setLoginLoading(false);
+    }
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangeError("");
+    setChangeLoading(true);
+
+    if (newPasswordVal.length < 5) {
+      setChangeError("Security password must containing at least 5 characters.");
+      setChangeLoading(false);
+      return;
+    }
+
+    if (newPasswordVal !== confirmPasswordVal) {
+      setChangeError("Credentials Mismatch: The security password entries do not align.");
+      setChangeLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/coordinator/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: requiresPasswordChangeData?.email,
+          tempPassword: requiresPasswordChangeData?.tempPassword,
+          newPassword: newPasswordVal
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setChangeError(data.error || "Failed to finalize credentials revision.");
+        setChangeLoading(false);
         return;
       }
 
       setIsAuthenticated(true);
-      setLoginLoading(false);
-    }, 800);
+      setRequiresPasswordChangeData(null);
+      setLoginPassword(newPasswordVal); // Update inputs for compliance state matching
+      setNewPasswordVal("");
+      setConfirmPasswordVal("");
+      setChangeLoading(false);
+    } catch (err: any) {
+      setChangeError("Loss of communication while committing new security key.");
+      setChangeLoading(false);
+    }
   };
 
   // Render Page Indicator / Breadcrumb Header for dedicated pages
@@ -290,6 +364,135 @@ export default function App() {
                 hideTopHeaders={hideTopHeaders}
                 setHideTopHeaders={setHideTopHeaders}
               />
+            ) : requiresPasswordChangeData ? (
+              <div className="max-w-md mx-auto my-12 px-4 animate-fade-in">
+                <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 sm:p-8 relative overflow-hidden text-left">
+                  <div className="absolute top-0 right-0 h-32 w-32 bg-amber-500/5 blur-3xl pointer-events-none" />
+
+                  {/* Lock Indicator */}
+                  <div className="flex justify-center mb-6">
+                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">
+                      <Lock className="h-6 w-6" />
+                      <div className="absolute right-0.5 bottom-0.5 h-3.5 w-3.5 rounded-full border border-white bg-amber-500 animate-pulse" />
+                    </div>
+                  </div>
+
+                  <div className="text-center space-y-2 mb-6">
+                    <span className="font-mono text-[9px] font-bold text-amber-750 uppercase tracking-widest bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
+                      {requiresPasswordChangeData.isExpiredPrompt ? "3-Month Mandatory Rotation" : "First-Time Login Security Setup"}
+                    </span>
+                    <h2 className="font-display text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                      {requiresPasswordChangeData.isExpiredPrompt ? "Credentials Password Expired" : "Update Temporary Credentials"}
+                    </h2>
+                    <p className="font-sans text-xs text-slate-500 max-w-xs mx-auto mt-1.5 leading-relaxed">
+                      {requiresPasswordChangeData.message || (requiresPasswordChangeData.isExpiredPrompt 
+                        ? "Your password has exceeded the 3-month (90 days) security compliance limit. Please configure a new security password to log in."
+                        : "To satisfy clinical GDPR and resident-vulnerability safety standards, you must replace your autogenerated temporary password.")}
+                    </p>
+                  </div>
+
+                  {changeError && (
+                    <div className="bg-rose-50 border border-rose-150 text-rose-750 p-3 rounded-xl text-xs flex gap-2 mb-4">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+                      <p className="font-semibold text-rose-700">{changeError}</p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleChangePasswordSubmit} className="space-y-4 font-sans text-xs">
+                    {/* Username / Email read-only */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Authorized Coordinator Email</label>
+                      <input
+                        type="email"
+                        readOnly
+                        value={requiresPasswordChangeData.email}
+                        className="w-full rounded-xl border border-slate-250 bg-slate-100 px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed font-mono"
+                      />
+                    </div>
+
+                    {/* Temporary password read-only */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        {requiresPasswordChangeData.isExpiredPrompt ? "Current Expired Password" : "Original Temporary Password"}
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={requiresPasswordChangeData.tempPassword}
+                        className="w-full rounded-xl border border-slate-250 bg-slate-100 px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed font-mono"
+                      />
+                    </div>
+
+                    {/* New Password */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block">New Security Password</label>
+                        <span className="text-[9px] text-slate-400 font-medium">Min 5 characters</span>
+                      </div>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Configure new password"
+                        value={newPasswordVal}
+                        onChange={(e) => setNewPasswordVal(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-shadow"
+                      />
+                    </div>
+
+                    {/* Confirm New Password */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block">Confirm New Password</label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Re-enter new password"
+                        value={confirmPasswordVal}
+                        onChange={(e) => setConfirmPasswordVal(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 transition-shadow"
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRequiresPasswordChangeData(null);
+                          setNewPasswordVal("");
+                          setConfirmPasswordVal("");
+                          setChangeError("");
+                        }}
+                        className="w-1/3 text-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-bold text-xs py-3 px-4 cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={changeLoading}
+                        className="w-2/3 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:bg-slate-500 text-white font-sans text-xs font-bold py-3 px-4 shadow transition-all cursor-pointer hover:shadow-lg"
+                      >
+                        {changeLoading ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
+                            <span>Updating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Update & Sign In</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="pt-4 border-t border-slate-100 mt-6 flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                    <span>SSL Credentials Crypt</span>
+                    <span>Primrose Node #3</span>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="max-w-md mx-auto my-12 px-4">
                 <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 sm:p-8 relative overflow-hidden text-left">
@@ -459,7 +662,7 @@ export default function App() {
       </main>
 
       {/* Brand Footer links back or switches hashpages instantly */}
-      <Footer />
+      {currentPath !== "portal" && currentPath !== "admin" && <Footer />}
 
       {/* Slide / Popup Interactive Demo Modal widget */}
       <DemoModal isOpen={isDemoModalOpen} onClose={() => setIsDemoModalOpen(false)} />

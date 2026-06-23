@@ -12,7 +12,11 @@ import {
   Bell,
   CheckCircle,
   X,
-  AlertCircle
+  AlertCircle,
+  Menu,
+  Command,
+  Keyboard,
+  Search
 } from "lucide-react";
 import {
   AdminUser,
@@ -96,6 +100,54 @@ export default function AdminPortalWrapper({
     // Auto polling intervals to keep dashboard sync'd matching active webhooks
     const timer = setInterval(fetchCoreData, 6000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Responsive mobile menu and universal quick-action command palette states
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandSearch, setCommandSearch] = useState("");
+
+  // Global hotkeys listener to switch administrative sections instantly
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.getAttribute("contenteditable") === "true")
+      ) {
+        // user is currently typing, ignore shortcuts
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      if (key === "d") {
+        setActiveTab("dashboard");
+        setMobileMenuOpen(false);
+      } else if (key === "q") {
+        setActiveTab("tasks");
+        setMobileMenuOpen(false);
+      } else if (key === "h") {
+        setActiveTab("traders");
+        setMobileMenuOpen(false);
+      } else if (key === "a") {
+        setActiveTab("agencies");
+        setMobileMenuOpen(false);
+      } else if (key === "l") {
+        setActiveTab("logs");
+        setMobileMenuOpen(false);
+      } else if (key === "s") {
+        setActiveTab("field-sim");
+        setMobileMenuOpen(false);
+      } else if (key === "/" || (e.ctrlKey && key === "k") || (e.metaKey && key === "k")) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const handleSignInSuccess = (user: AdminUser, assignedToken: string) => {
@@ -198,8 +250,34 @@ export default function AdminPortalWrapper({
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans">
+      
+      {/* Mobile Top Header Bar for Super Admin */}
+      <div className="lg:hidden bg-slate-900 border-b border-slate-800 text-white px-5 py-4 flex items-center justify-between z-30 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-rose-500 rounded-lg flex items-center justify-center text-white">
+            <ShieldCheck className="h-4.5 w-4.5" />
+          </div>
+          <span className="font-display font-black text-sm text-white">TaskBridge Admin</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors"
+            title="Search & shortcuts"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 rounded-lg bg-slate-850 text-slate-300 hover:text-white transition-colors border border-slate-705/50"
+          >
+            {mobileMenuOpen ? <X className="h-4 w-4 text-rose-400" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
       {/* Dynamic persistent sidebar */}
-      <aside className="w-full lg:w-64 bg-slate-900 text-white shrink-0 border-r border-slate-800 flex flex-col justify-between">
+      <aside className={`w-full lg:w-64 bg-slate-900 text-white shrink-0 border-r border-slate-800 flex flex-col justify-between transition-all duration-300 ${mobileMenuOpen ? "block" : "hidden lg:flex"}`}>
         <div className="p-5 space-y-6">
           {/* Logo Brand banner */}
           <a href="#" className="flex items-center gap-3 select-none pb-4 border-b border-slate-800 hover:opacity-90 transition-opacity">
@@ -325,6 +403,100 @@ export default function AdminPortalWrapper({
           <button onClick={() => setNotifOpen(false)} className="text-slate-500 hover:text-white shrink-0">
             <X className="h-4 w-4" />
           </button>
+        </div>
+      )}
+
+      {/* ================= ADMIN COMMAND PALETTE OVERLAY ================= */}
+      {commandPaletteOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden">
+            {/* Search Input */}
+            <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-slate-950/40">
+              <Command className="h-5 w-5 text-rose-500 animate-pulse" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Type admin command, handyman name, or agency details..."
+                value={commandSearch}
+                onChange={(e) => setCommandSearch(e.target.value)}
+                className="bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none w-full"
+              />
+              <button 
+                onClick={() => { setCommandPaletteOpen(false); setCommandSearch(""); }}
+                className="p-1 px-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-[10px] font-mono"
+              >
+                ESC
+              </button>
+            </div>
+
+            {/* Suggestions / Results */}
+            <div className="p-2 max-h-[350px] overflow-y-auto space-y-1 text-left">
+              <div className="px-3 py-1 text-[10px] font-mono uppercase text-slate-500 tracking-wider">Console Shortcuts</div>
+              
+              {/* Commands list */}
+              {[
+                { label: "Go to Console Dashboard", tab: "dashboard", desc: "View operations overview & security metrics", shortcut: "D" },
+                { label: "Open Dispatch Queue", tab: "tasks", desc: "Evaluate matched handymen & verify details", shortcut: "Q" },
+                { label: "Manage Handymen Registry", tab: "traders", desc: "Onboard providers & DBS compliance files", shortcut: "H" },
+                { label: "Care Agencies Console", tab: "agencies", desc: "Link remote regional coordination trusts", shortcut: "A" },
+                { label: "Audit & API Tunnels", tab: "logs", desc: "View event ledgers & callback webhook packets", shortcut: "L" },
+                { label: "SMS Visit Link Simulator", tab: "field-sim", desc: "Simulate mobile visits & check-in events", shortcut: "S" },
+              ].filter(cmd => cmd.label.toLowerCase().includes(commandSearch.toLowerCase()) || cmd.desc.toLowerCase().includes(commandSearch.toLowerCase())).map((cmd, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setActiveTab(cmd.tab);
+                    setCommandPaletteOpen(false);
+                    setCommandSearch("");
+                  }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-slate-805 flex justify-between items-center group transition-all"
+                >
+                  <div className="text-xs">
+                    <p className="font-bold text-slate-205 group-hover:text-white">{cmd.label}</p>
+                    <p className="text-[10px] text-slate-550">{cmd.desc}</p>
+                  </div>
+                  <span className="bg-slate-850 text-slate-400 group-hover:text-rose-400 border border-slate-700 text-[10px] px-2 py-0.5 rounded font-mono">
+                    {cmd.shortcut}
+                  </span>
+                </button>
+              ))}
+
+              {/* Handyman search list */}
+              {traders.length > 0 && (
+                <>
+                  <div className="px-3 py-1 text-[10px] font-mono uppercase text-slate-500 tracking-wider mt-3">Matching Handymen</div>
+                  {traders.filter(t => 
+                    t.firstName.toLowerCase().includes(commandSearch.toLowerCase()) ||
+                    t.company.toLowerCase().includes(commandSearch.toLowerCase())
+                  ).map((t, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setActiveTab("traders");
+                        setCommandPaletteOpen(false);
+                        setCommandSearch("");
+                      }}
+                      className="w-full text-left p-3 rounded-xl hover:bg-slate-805 flex justify-between items-center group transition-all border border-transparent hover:border-slate-805"
+                    >
+                      <div className="text-xs">
+                        <span className="font-bold text-slate-200 group-hover:text-white">{t.firstName}</span>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{t.company}</p>
+                      </div>
+                      <span className="text-[9px] font-mono bg-slate-950/60 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded">
+                        {t.dbsVerifiedStatus}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Footer tips */}
+            <div className="p-3 bg-slate-950/60 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-500 font-mono">
+              <span>Shortcuts: Press D, Q, H, A, L, S to switch pages instantly</span>
+              <span>Press ESC to dismiss</span>
+            </div>
+          </div>
         </div>
       )}
     </div>

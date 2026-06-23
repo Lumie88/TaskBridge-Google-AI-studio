@@ -31,7 +31,10 @@ import {
   Lock,
   Loader2,
   Trash2,
-  Key
+  Key,
+  Menu,
+  Command,
+  Keyboard
 } from "lucide-react";
 
 // Types
@@ -257,6 +260,52 @@ export default function CoordinatorPortal({
     // Log initial Auth API Call
     addApiLog("POST", "/auth/login", 200);
     addApiLog("GET", "/tasks", 200);
+  }, []);
+
+  // Responsive mobile menu and universal quick-action command palette states
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandSearch, setCommandSearch] = useState("");
+
+  // Global hotkeys listener to switch views instantly
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.getAttribute("contenteditable") === "true")
+      ) {
+        // user is currently typing, ignore shortcuts
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      if (key === "d") {
+        setActiveTab("dashboard");
+        setSelectedDetailedTask(null);
+        setMobileMenuOpen(false);
+      } else if (key === "c") {
+        setActiveTab("create");
+        setSelectedDetailedTask(null);
+        setMobileMenuOpen(false);
+      } else if (key === "s") {
+        setActiveTab("status");
+        setSelectedDetailedTask(null);
+        setMobileMenuOpen(false);
+      } else if (key === "n") {
+        setActiveTab("notifications");
+        setSelectedDetailedTask(null);
+        setMobileMenuOpen(false);
+      } else if (key === "/" || (e.ctrlKey && key === "k") || (e.metaKey && key === "k")) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const addApiLog = (method: string, url: string, status: number) => {
@@ -572,8 +621,33 @@ export default function CoordinatorPortal({
 
       <div className={`mx-auto ${isFullWidth ? "max-w-none w-full rounded-none" : "max-w-7xl rounded-none md:rounded-3xl"} bg-white border border-slate-200 shadow-xl overflow-hidden min-h-[750px] flex flex-col lg:flex-row transition-all duration-300`}>
         
+        {/* Mobile Navbar Header */}
+        <div className="lg:hidden bg-slate-900 border-b border-slate-800 text-white px-5 py-4 flex items-center justify-between z-30 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center text-white">
+              <Shield className="h-4 w-4" />
+            </div>
+            <span className="font-display font-bold text-sm text-white">TaskBridge Portal</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCommandPaletteOpen(true)}
+              className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors"
+              title="Search and shortcuts"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-1.5 rounded-lg bg-slate-850 text-slate-300 hover:text-white transition-colors border border-slate-700/50"
+            >
+              {mobileMenuOpen ? <X className="h-4 w-4 text-rose-450" /> : <Menu className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
         {/* ================= PORTAL LEFT COLUMN SIDEBAR ================= */}
-        <aside className="lg:w-72 bg-slate-900 text-slate-300 p-6 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800 shrink-0">
+        <aside className={`lg:w-72 bg-slate-900 text-slate-300 p-6 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800 shrink-0 transition-all duration-305 ${mobileMenuOpen ? "block" : "hidden lg:flex"}`}>
           <div className="space-y-6">
             
             {/* Logo/Identity Section */}
@@ -1848,6 +1922,103 @@ export default function CoordinatorPortal({
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ================= COMMAND PALETTE MODAL OVERLAY ================= */}
+      {commandPaletteOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden">
+            {/* Search Input */}
+            <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-slate-950/40">
+              <Command className="h-5 w-5 text-rose-500 animate-pulse" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Type a command, task ID, resident name or shortcut..."
+                value={commandSearch}
+                onChange={(e) => setCommandSearch(e.target.value)}
+                className="bg-transparent text-white placeholder-slate-500 text-sm focus:outline-none w-full"
+              />
+              <button 
+                onClick={() => { setCommandPaletteOpen(false); setCommandSearch(""); }}
+                className="p-1 px-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-[10px] font-mono"
+              >
+                ESC
+              </button>
+            </div>
+
+            {/* Suggestions / Results */}
+            <div className="p-2 max-h-[350px] overflow-y-auto space-y-1 text-left">
+              <div className="px-3 py-1 text-[10px] font-mono uppercase text-slate-500 tracking-wider">Fast Navigation Actions</div>
+              
+              {/* Commands list */}
+              {[
+                { label: "Go to Executive Dashboard", tab: "dashboard", desc: "View care overview, metrics & reports", shortcut: "D" },
+                { label: "Create a New Safety Task", tab: "create", desc: "Transcribe care notes into repair jobs", shortcut: "C" },
+                { label: "Open Task Status Board", tab: "status", desc: "Track on-site handymen & audit progress", shortcut: "S" },
+                { label: "View Operational Alerts", tab: "notifications", desc: "Check alerts and real-time system webhooks", shortcut: "N" },
+              ].filter(cmd => cmd.label.toLowerCase().includes(commandSearch.toLowerCase()) || cmd.desc.toLowerCase().includes(commandSearch.toLowerCase())).map((cmd, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setActiveTab(cmd.tab as any);
+                    setSelectedDetailedTask(null);
+                    setCommandPaletteOpen(false);
+                    setCommandSearch("");
+                  }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-slate-805 flex justify-between items-center group transition-all"
+                >
+                  <div className="text-xs">
+                    <p className="font-bold text-slate-200 group-hover:text-white">{cmd.label}</p>
+                    <p className="text-[10px] text-slate-500">{cmd.desc}</p>
+                  </div>
+                  <span className="bg-slate-800 text-slate-400 group-hover:text-rose-400 border border-slate-700 text-[10px] px-2 py-0.5 rounded-lg font-mono">
+                    {cmd.shortcut}
+                  </span>
+                </button>
+              ))}
+
+              {/* Task search list */}
+              {tasks.length > 0 && (
+                <>
+                  <div className="px-3 py-1 text-[10px] font-mono text-slate-500 tracking-wider mt-3">Matching Active Resident Tasks</div>
+                  {tasks.filter(t => 
+                    t.residentFullName.toLowerCase().includes(commandSearch.toLowerCase()) ||
+                    t.category.toLowerCase().includes(commandSearch.toLowerCase()) ||
+                    t.summary.toLowerCase().includes(commandSearch.toLowerCase()) ||
+                    t.id.toLowerCase().includes(commandSearch.toLowerCase())
+                  ).map((t, i) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setActiveTab("status");
+                        setSelectedDetailedTask(t);
+                        setCommandPaletteOpen(false);
+                        setCommandSearch("");
+                      }}
+                      className="w-full text-left p-3 rounded-xl hover:bg-slate-805 flex justify-between items-center group transition-all border border-transparent hover:border-slate-800"
+                    >
+                      <div className="text-xs">
+                        <span className="font-mono text-[9px] text-rose-500 mr-1.5">{t.id}</span>
+                        <span className="font-bold text-slate-255 group-hover:text-white">{t.residentFullName} ({t.residentInitials})</span>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{t.summary}</p>
+                      </div>
+                      <span className="text-[9px] font-mono bg-slate-950/60 text-slate-400 border border-slate-850 px-1.5 py-0.5 rounded">
+                        {t.status}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Footer tips */}
+            <div className="p-3 bg-slate-950/60 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-500 font-mono">
+              <span>Shortcuts: Press D, C, S, N to navigate instantly</span>
+              <span>Press ESC to dismiss</span>
+            </div>
           </div>
         </div>
       )}
